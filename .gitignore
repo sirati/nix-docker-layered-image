@@ -1,0 +1,33 @@
+# Nix build outputs
+result
+result-*
+**/result
+**/result-*
+
+# Direnv
+.direnv/
+
+# Editor scratch files
+*.swp
+*.swo
+*~
+.#*
+\#*\#
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Python bytecode (extract-layer-assignment.py is plain Python; CI may import it)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local layer-cache outputs (consumers may produce these next to the example flake)
+/.docker-layer-cache.json
+/.docker-layer-cache.json.partial
+**/.docker-layer-cache.json
+**/.docker-layer-cache.json.partial
+
+# Zed editor agent rules (auto-generated)
+.rules-zed-provided
