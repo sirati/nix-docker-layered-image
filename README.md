@@ -1,39 +1,37 @@
 # nix-docker-layered-image
 
-Reusable helpers for building **semantically layered** Docker images
-with `dockerTools.buildLayeredImage` (or `streamLayeredImage`), plus a
-small Python tool to extract a built image's layer assignment so that
-subsequent rebuilds preserve layer identity.
+Reusable helpers for building Docker images with semantic layers using
+`dockerTools.buildLayeredImage` or `streamLayeredImage`. A small Python tool
+extracts the layer assignment of a built image, so later rebuilds keep the
+same layers.
 
-This was extracted from the [asm-tokenizer](https://github.com/sirati/asm-tokenizer)
-project, where it was used to keep a ~3 GB layered image's blob cache
-stable across nixpkgs bumps and per-package source changes.
+This code comes from the [asm-tokenizer](https://github.com/sirati/asm-tokenizer)
+project. There it kept the blob cache of a layered image of about 3 GB stable
+across nixpkgs bumps and source changes in single packages.
 
 ## What's in here
 
-- **`lib.semanticLayering.buildPipeline`** — turns a list of "units"
-  (named groups of derivations / store paths) into a
-  `layeringPipeline` value suitable for
-  `pkgs.dockerTools.buildLayeredImage`'s `layeringPipeline` argument.
-  Each unit becomes its own layer (or two layers, if `isolate = true`),
-  in the order you list them. Whatever isn't claimed by any unit
-  becomes a final "basics" tier.
+- `lib.semanticLayering.buildPipeline` turns a list of "units" into a
+  `layeringPipeline` value for the `layeringPipeline` argument of
+  `pkgs.dockerTools.buildLayeredImage`. A unit is a named group of
+  derivations or store paths. Each unit becomes its own layer, or two layers
+  if `isolate = true`, in the order you list them. Everything that no unit
+  claims goes into a final "basics" tier.
 
-  Useful when you want, e.g., your project source, your Rust wheel,
-  Ghidra+JDK, and your Python deps each isolated in their own layer
-  for cache-friendly rebuilds, instead of relying on the default
-  popularity-contest algorithm (which can reshuffle on small input
-  changes).
+  Use it when you want separate layers for, for example, your project
+  source, your Rust wheel, Ghidra+JDK and your Python dependencies, so
+  rebuilds hit the cache. The default popularity-contest algorithm can
+  reshuffle layers after small input changes.
 
-- **`lib.semanticLayering.readAssignmentFromEnv`** — reads a previous
-  build's layer assignment from a JSON file path given by an env var,
-  for use as `previousAssignment` to stabilise the basics tier across
-  rebuilds. Requires `--impure`.
+- `lib.semanticLayering.readAssignmentFromEnv` reads the layer assignment
+  of a previous build from a JSON file. An environment variable gives the
+  file path. Pass the result as `previousAssignment` to keep the basics tier
+  stable across rebuilds. It requires `--impure`.
 
-- **`packages.extract-layer-assignment`** — Python script that opens a
-  `dockerTools.buildLayeredImage` output (a docker-archive `.tar.gz`)
-  and dumps its layer-to-store-path assignment as JSON, in exactly the
-  shape `buildPipeline { previousAssignment = …; }` consumes.
+- `packages.extract-layer-assignment` is a Python script. It opens the
+  output of `dockerTools.buildLayeredImage`, a docker-archive `.tar.gz`, and
+  writes its mapping from layers to store paths as JSON. The JSON has
+  exactly the shape that `buildPipeline { previousAssignment = …; }` reads.
 
 ## Quickstart
 
@@ -65,13 +63,13 @@ pkgs.dockerTools.buildLayeredImage {
 }
 ```
 
-A complete, buildable example lives in
-[`examples/minimal-flake/`](examples/minimal-flake/flake.nix).
+[`examples/minimal-flake/`](examples/minimal-flake/flake.nix) contains a
+complete example that builds.
 
 ## Partial builds (cache-stable rebuilds)
 
-After a successful build, dump the layer assignment and feed it back
-on the next build:
+After a successful build, write out the layer assignment and pass it to the
+next build:
 
 ```sh
 nix build .#demo-image --print-out-paths \
@@ -82,9 +80,8 @@ NIX_DOCKER_LAYER_CACHE=$PWD/.docker-layer-cache.json \
   nix build .#demo-image --impure
 ```
 
-The `tests/roundtrip.nix` expression exercises exactly this loop and
-asserts that the resulting image hash is identical across the second
-build.
+The `tests/roundtrip.nix` expression runs this loop and asserts that the
+second build produces an identical image hash.
 
 ## Contributor workflow
 
@@ -96,4 +93,4 @@ nix-build tests/roundtrip.nix        # standalone roundtrip test
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache License 2.0. See [LICENSE](LICENSE).
